@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AK64 Chess Hub | Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alata&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #081426;
+      --muted: #52657e;
+      --paper: #edf5ff;
+      --panel: #ffffff;
+      --gold: #60a5fa;
+      --teal: #0b69b7;
+      --red: #3157b7;
+      --line: rgba(8, 20, 38, 0.12);
+      --shadow: 0 18px 45px rgba(8, 43, 90, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Inter", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(96, 165, 250, 0.28), transparent 30rem),
+        radial-gradient(circle at 80% 10%, rgba(14, 116, 144, 0.16), transparent 26rem),
+        linear-gradient(180deg, #f7fbff 0%, var(--paper) 100%);
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(237, 245, 255, 0.88);
+      backdrop-filter: blur(16px);
+    }
+
+    .nav {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: linear-gradient(135deg, #0b2f62, #081426);
+      border: 3px solid var(--gold);
+      border-radius: 8px;
+      font-family: "Alata", sans-serif;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+    }
+
+    .nav-links a:hover {
+      color: var(--ink);
+    }
+
+    .nav-cta,
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: var(--ink);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 800;
+      box-shadow: 0 10px 20px rgba(8, 43, 90, 0.18);
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+
+    .nav-cta:hover,
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 26px rgba(8, 43, 90, 0.24);
+    }
+
+    .button.secondary {
+      background: transparent;
+      color: var(--ink);
+      border-color: var(--line);
+      box-shadow: none;
+    }
+
+    .hero {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      min-height: calc(100vh - 72px);
+      display: grid;
+      grid-template-columns: minmax(0, 1.03fr) minmax(320px, 0.97fr);
+      gap: 48px;
+      align-items: center;
+      padding: 48px 0 36px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 18px;
+      color: var(--teal);
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 3px;
+      background: var(--gold);
+      border-radius: 99px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 720px;
+      font-size: clamp(44px, 6vw, 68px);
+    }
+
+    .hero-copy {
+      max-width: 620px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 19px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .hero-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+    }
+
+    .hero-card-footer {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .metric {
+      min-height: 92px;
+      padding: 18px;
+      background: var(--panel);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    section {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 72px 0;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 26px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(30px, 4vw, 46px);
+    }
+
+    .section-head p {
+      max-width: 480px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.76);
+      padding: 24px;
+      box-shadow: 0 10px 28px rgba(8, 43, 90, 0.08);
+    }
+
+    .card h3 {
+      margin-bottom: 12px;
+      font-size: 22px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+    }
+
+    .card ul {
+      margin: 16px 0 0;
+      padding-left: 20px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid rgba(11, 105, 183, 0.2);
+      border-radius: 999px;
+      color: var(--teal);
+      background: rgba(96, 165, 250, 0.14);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .feature-band {
+      width: 100%;
+      margin: 28px 0 0;
+      background:
+        radial-gradient(circle at top right, rgba(96, 165, 250, 0.2), transparent 24rem),
+        linear-gradient(135deg, #061a34, #0b2f62);
+      color: #fff;
+    }
+
+    .feature-inner {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .feature-inner p {
+      color: rgba(255, 255, 255, 0.72);
+      margin: 16px 0 0;
+    }
+
+    .quote {
+      border-left: 5px solid var(--gold);
+      padding-left: 22px;
+      font-size: 23px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 14px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .timeline-item time {
+      color: var(--red);
+      font-weight: 800;
+    }
+
+    .timeline-item h3 {
+      font-size: 20px;
+      margin-bottom: 6px;
+    }
+
+    .timeline-item p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .contact {
+      padding-bottom: 34px;
+    }
+
+    .contact-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 30px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .contact-panel h2 {
+      font-size: clamp(30px, 4vw, 44px);
+      margin-bottom: 10px;
+    }
+
+    .contact-panel p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    footer {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 38px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    @media (max-width: 860px) {
+      .nav {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 14px 0;
+      }
+
+      .nav-links {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .hero,
+      .feature-inner,
+      .contact-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 32px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .contact-panel {
+        justify-items: start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .nav-links {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+      }
+
+      .nav-cta {
+        width: 100%;
+      }
+
+      .hero-card-footer {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-item {
+        grid-template-columns: 1fr;
+      }
+
+      .actions,
+      .actions .button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="brand" href="index.html" aria-label="AK64 Chess Hub home">
+        <span class="brand-mark">A64</span>
+        <span>AK64 Chess Hub</span>
+      </a>
+      <div class="nav-links">
+        <a href="#work">Work</a>
+        <a href="#training">Training</a>
+        <a href="#results">Results</a>
+        <a class="nav-cta" href="schedule.html">Class Schedule</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <p class="eyebrow">Chess coach and student strategist</p>
+        <h1 id="hero-title">AK64 Chess Portfolio</h1>
+        <p class="hero-copy">
+          Beginner chess lessons built around clear rules, smart habits, and step-by-step board understanding.
+        </p>
+        <div class="actions">
+          <a class="button" href="schedule.html">View Program</a>
+          <a class="button secondary" href="#work">See Portfolio</a>
+        </div>
+      </div>
+
+      <aside class="hero-card" aria-label="AK64 Chess Hub profile">
+        <img src="https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=1100&q=80" alt="Chess pieces on a wooden board">
+        <div class="hero-card-footer">
+          <div class="metric">
+            <strong>3</strong>
+            <span>day starter program</span>
+          </div>
+          <div class="metric">
+            <strong>6</strong>
+            <span>core piece skills</span>
+          </div>
+          <div class="metric">
+            <strong>4</strong>
+            <span>tactics taught</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section id="work" aria-labelledby="work-title">
+      <div class="section-head">
+        <h2 id="work-title">Portfolio Work</h2>
+        <p>Learning tools and lesson formats that help students read the board, understand threats, and build confidence.</p>
+      </div>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Beginner Chess Academy</h3>
+          <p>A three-day lesson path covering board setup, piece movement, core rules, and checkmate basics.</p>
+          <div class="tag-row">
+            <span class="tag">Curriculum</span>
+            <span class="tag">Coaching</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>Tactics Lab</h3>
+          <p>Focused puzzle work for forks, pins, skewers, discovered attacks, hanging pieces, and mate-in-one ideas.</p>
+          <div class="tag-row">
+            <span class="tag">Puzzles</span>
+            <span class="tag">Pattern recognition</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>Position Review</h3>
+          <p>Board-study lessons that teach students how to compare moves, explain choices, and notice key details.</p>
+          <div class="tag-row">
+            <span class="tag">Review</span>
+            <span class="tag">Feedback</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div class="feature-band" id="training">
+      <div class="feature-inner">
+        <div>
+          <p class="eyebrow">Training approach</p>
+          <h2>Simple rules, serious thinking.</h2>
+          <p>
+            Each lesson introduces one idea, reinforces it with board drills, then checks for understanding before moving on.
+          </p>
+        </div>
+        <div class="quote">
+          Students learn to slow down, look carefully, and explain what they see.
+        </div>
+      </div>
+    </div>
+
+    <section id="results" aria-labelledby="results-title">
+      <div class="section-head">
+        <h2 id="results-title">Results Focus</h2>
+        <p>Progress is measured through visible skills: setup, pattern recognition, and clear board thinking.</p>
+      </div>
+
+      <div class="timeline">
+        <article class="timeline-item">
+          <time>Step 01</time>
+          <div>
+            <h3>Board control</h3>
+            <p>Students learn setup, legal moves, piece values, and safe-square awareness.</p>
+          </div>
+        </article>
+        <article class="timeline-item">
+          <time>Step 02</time>
+          <div>
+            <h3>Threat detection</h3>
+            <p>Students identify checks, captures, attacks, and defended pieces before answering.</p>
+          </div>
+        </article>
+        <article class="timeline-item">
+          <time>Step 03</time>
+          <div>
+            <h3>Skill checkpoints</h3>
+            <p>Students review checkmates, opening ideas, promotion basics, and lesson goals.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="contact" aria-labelledby="contact-title">
+      <div class="contact-panel">
+        <div>
+          <h2 id="contact-title">Ready for the next class?</h2>
+          <p>Open the schedule for class dates, times, and the protected lesson plan.</p>
+        </div>
+        <a class="button" href="schedule.html">Open Schedule</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    AK64 Chess Hub portfolio site. Built for clear lessons, focused drills, and better chess habits.
+  </footer>
+</body>
+</html>
