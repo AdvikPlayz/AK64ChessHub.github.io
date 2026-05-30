@@ -633,6 +633,29 @@
       color: var(--ink);
     }
 
+    .class-edit {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .class-edit + .class-edit {
+      margin-top: 12px;
+    }
+
+    .class-edit strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .sync-note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
     .admin-actions {
       display: flex;
       flex-wrap: wrap;
@@ -863,6 +886,7 @@
         <div class="admin-grid">
           <div class="admin-box">
             <h4>Class Schedule</h4>
+            <p class="sync-note">Use Save Locally to preview. Use Publish Website Data after the free sync URL is added to this file.</p>
             <div id="status-controls"></div>
             <div class="admin-actions">
               <button type="button" onclick="saveClassChanges()">Save Locally</button>
@@ -1083,6 +1107,7 @@
     const STATUS_KEY = "ak64ClassStatuses";
     const CLASS_KEY = "ak64ClassRows";
     const PLAN_KEY = "ak64PrivatePlanRows";
+    const REMOTE_SCHEDULE_API = "https://script.google.com/macros/s/AKfycbwWyD4iH7dt8ulpBOmJ7O99-wGFKJQuk-o3u8r_GNszwzoE-dT8qVPGSBMqITHnJcJz/exec";
 
     function parseScheduleDate(dateText, timeText) {
       const dateMatch = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dateText || "");
@@ -1338,8 +1363,8 @@
         type: "class",
         day: "",
         title: card.dataset.title || "",
-        date: card.querySelector(".class-date")?.textContent || EMPTY_DATE,
-        time: card.querySelector(".date-time")?.textContent || EMPTY_TIME,
+        date: card.dataset.date || "",
+        time: card.dataset.time || "",
         status: card.dataset.status || "",
         display_status: card.querySelector(".status-tag")?.textContent || "",
         description: card.querySelector(".time-body p")?.textContent || "",
@@ -1470,6 +1495,7 @@
         card.dataset.status = row.status || "";
         card.querySelector(".time-body p").textContent = row.description || card.querySelector(".time-body p").textContent;
       });
+      updateScheduleStatus();
     }
 
     function loadStoredClassRows() {
@@ -1499,50 +1525,206 @@
       }
     }
 
+    function cleanPlaceholder(value, placeholder) {
+      return value && value !== placeholder ? value : "";
+    }
+
     function renderStatusControls() {
       const wrapper = document.getElementById("status-controls");
       wrapper.innerHTML = Array.from(document.querySelectorAll(".time-card")).map((card) => `
-        <div class="admin-row">
-          <label for="status-${card.dataset.title.replace(/[^a-z0-9]/gi, "-")}">${escapeHTML(card.dataset.title)}</label>
-          <select data-status-title="${escapeHTML(card.dataset.title)}" id="status-${card.dataset.title.replace(/[^a-z0-9]/gi, "-")}">
-            <option value="">Auto</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="live">In session</option>
-            <option value="archived">Archived</option>
-          </select>
+        <div class="class-edit" data-edit-title="${escapeHTML(card.dataset.title)}">
+          <strong>${escapeHTML(card.dataset.title)}</strong>
+          <div class="admin-row">
+            <label for="date-${card.dataset.title.replace(/[^a-z0-9]/gi, "-")}">Date</label>
+            <input data-field="date" data-class-title="${escapeHTML(card.dataset.title)}" id="date-${card.dataset.title.replace(/[^a-z0-9]/gi, "-")}" value="${escapeHTML(card.dataset.date || "")}" placeholder="__/__/____">
+          </div>
+          <div class="admin-row">
+            <label for="time-${card.dataset.title.replace(/[^a-z0-9]/gi, "-")}">Time</label>
+            <input data-field="time" data-class-title="${escapeHTML(card.dataset.title)}" id="time-${card.dataset.title.replace(/[^a-z0-9]/gi, "-")}" value="${escapeHTML(card.dataset.time || "")}" placeholder="__:__ __">
+          </div>
+          <div class="admin-row">
+            <label for="status-${card.dataset.title.replace(/[^a-z0-9]/gi, "-")}">Status</label>
+            <select data-field="status" data-class-title="${escapeHTML(card.dataset.title)}" id="status-${card.dataset.title.replace(/[^a-z0-9]/gi, "-")}">
+              <option value="">Auto</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="live">In session</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
         </div>
       `).join("");
 
       wrapper.querySelectorAll("select").forEach((select) => {
-        const card = Array.from(document.querySelectorAll(".time-card")).find((item) => item.dataset.title === select.dataset.statusTitle);
+        const card = Array.from(document.querySelectorAll(".time-card")).find((item) => item.dataset.title === select.dataset.classTitle);
         select.value = card?.dataset.status || "";
       });
     }
 
-    function saveClassStatuses() {
+    function saveClassChanges() {
       const statuses = {};
-      document.querySelectorAll("#status-controls select").forEach((select) => {
-        statuses[select.dataset.statusTitle] = select.value;
-        const card = Array.from(document.querySelectorAll(".time-card")).find((item) => item.dataset.title === select.dataset.statusTitle);
+      document.querySelectorAll("#status-controls [data-class-title]").forEach((control) => {
+        const card = Array.from(document.querySelectorAll(".time-card")).find((item) => item.dataset.title === control.dataset.classTitle);
         if (card) {
-          card.dataset.status = select.value;
+          card.dataset[control.dataset.field] = cleanPlaceholder(control.value.trim(), control.dataset.field === "date" ? EMPTY_DATE : EMPTY_TIME);
+          statuses[card.dataset.title] = card.dataset.status || "";
         }
       });
       localStorage.setItem(STATUS_KEY, JSON.stringify(statuses));
       localStorage.setItem(CLASS_KEY, JSON.stringify(getClassScheduleRows()));
       updateScheduleStatus();
-      setAdminNote("Saved class status changes.");
+      setAdminNote("Saved class changes on this device. Use Publish Website Data to update other devices.");
+    }
+
+    function saveClassStatuses() {
+      saveClassChanges();
     }
 
     function resetClassStatuses() {
       localStorage.removeItem(STATUS_KEY);
       localStorage.removeItem(CLASS_KEY);
-      document.querySelectorAll(".time-card").forEach((card) => {
-        card.dataset.status = "";
-      });
+      window.location.reload();
+    }
+
+    function getScheduleState() {
+      saveClassChanges();
+      return {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        classRows: getClassScheduleRows(),
+        lessonRows: getPlanRowsFromDOM()
+      };
+    }
+
+    function applyScheduleState(state) {
+      if (!state) {
+        return false;
+      }
+
+      if (Array.isArray(state.classRows)) {
+        applyClassRows(state.classRows);
+        localStorage.setItem(CLASS_KEY, JSON.stringify(getClassScheduleRows()));
+      }
+
+      if (Array.isArray(state.lessonRows)) {
+        renderPrivatePlan(state.lessonRows);
+        localStorage.setItem(PLAN_KEY, JSON.stringify(state.lessonRows));
+      }
+
       renderStatusControls();
       updateScheduleStatus();
-      setAdminNote("Reset class statuses to automatic.");
+      return true;
+    }
+
+    function getRemoteURL() {
+      return REMOTE_SCHEDULE_API.trim();
+    }
+
+    function getPublishKey() {
+      let publishKey = sessionStorage.getItem("ak64PublishKey") || "";
+
+      if (!publishKey) {
+        publishKey = window.prompt("Enter your private publish key for the shared schedule:") || "";
+      }
+
+      publishKey = publishKey.trim();
+
+      if (publishKey) {
+        sessionStorage.setItem("ak64PublishKey", publishKey);
+      }
+
+      return publishKey;
+    }
+
+    function loadJSONP(url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = `ak64ScheduleCallback${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        const script = document.createElement("script");
+        const separator = url.includes("?") ? "&" : "?";
+        const timeout = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("The shared schedule request timed out."));
+        }, 10000);
+
+        function cleanup() {
+          window.clearTimeout(timeout);
+          script.remove();
+          delete window[callbackName];
+        }
+
+        window[callbackName] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("The shared schedule could not be reached."));
+        };
+
+        script.src = `${url}${separator}callback=${encodeURIComponent(callbackName)}&cache=${Date.now()}`;
+        document.body.appendChild(script);
+      });
+    }
+
+    async function loadRemoteScheduleData(showNote = false) {
+      const remoteURL = getRemoteURL();
+      if (!remoteURL) {
+        if (showNote) {
+          setAdminNote("Shared sync is not configured yet. Add the Google Apps Script web app URL to REMOTE_SCHEDULE_API.");
+        }
+        return false;
+      }
+
+      try {
+        const result = await loadJSONP(remoteURL);
+        if (!result || result.ok === false) {
+          throw new Error(result?.error || "No shared schedule data was returned.");
+        }
+
+        const applied = applyScheduleState(result.state || result);
+        if (showNote) {
+          setAdminNote(applied ? "Loaded the shared schedule from the website data." : "No shared schedule has been published yet.");
+        }
+        return applied;
+      } catch (error) {
+        if (showNote) {
+          setAdminNote(`Could not load shared schedule data: ${error.message}`);
+        }
+        return false;
+      }
+    }
+
+    async function publishWebsiteData() {
+      const remoteURL = getRemoteURL();
+      if (!remoteURL) {
+        setAdminNote("Shared sync is not configured yet. Add the Google Apps Script web app URL to REMOTE_SCHEDULE_API.");
+        return;
+      }
+
+      const publishKey = getPublishKey();
+      if (!publishKey) {
+        setAdminNote("Publish canceled. A private publish key is required to update the shared schedule.");
+        return;
+      }
+
+      const payload = {
+        publishKey,
+        state: getScheduleState()
+      };
+
+      try {
+        await fetch(remoteURL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload)
+        });
+        setAdminNote("Published website data. Refresh another device to see the shared schedule.");
+      } catch (error) {
+        setAdminNote(`Publish failed: ${error.message}`);
+      }
     }
 
     function checkPassword() {
@@ -1572,9 +1754,15 @@
     });
 
     async function initializeSchedulePage() {
-      loadStoredClassRows();
-      loadStoredPrivatePlan();
-      loadClassStatuses();
+      const loadedRemote = await loadRemoteScheduleData(false);
+
+      if (!loadedRemote) {
+        loadStoredClassRows();
+        loadStoredPrivatePlan();
+        loadClassStatuses();
+      }
+
+      renderStatusControls();
       setupCSVUpload();
       updateScheduleStatus();
     }
