@@ -732,6 +732,39 @@
       margin-top: 0;
     }
 
+    .lesson-csv-buttons {
+      display: contents;
+    }
+
+    .lesson-admin-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .lesson-admin-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .lesson-admin-title {
+      min-width: 0;
+      font-weight: 800;
+    }
+
+    .lesson-admin-item button {
+      min-height: 38px;
+      margin-top: 0;
+      white-space: nowrap;
+      width: auto;
+    }
+
     .admin-file {
       width: 100%;
       padding: 9px 12px;
@@ -791,6 +824,10 @@
       .public-head {
         align-items: flex-start;
         flex-direction: column;
+      }
+
+      .lesson-admin-item {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -918,9 +955,7 @@
             <p>Use one CSV import for class cards and lesson plans. Bullet points stay in one cell separated by semicolons.</p>
             <div class="admin-actions">
               <button type="button" onclick="downloadCombinedCSV()">Download All CSV</button>
-              <button type="button" onclick="downloadLessonDayCSV('1')">Lesson 1 CSV</button>
-              <button type="button" onclick="downloadLessonDayCSV('2')">Lesson 2 CSV</button>
-              <button type="button" onclick="downloadLessonDayCSV('3')">Lesson 3 CSV</button>
+              <span class="lesson-csv-buttons" id="lesson-csv-buttons"></span>
               <button type="button" onclick="resetPrivatePlan()">Reset Plan</button>
             </div>
             <div class="admin-row">
@@ -929,69 +964,18 @@
             </div>
             <p class="admin-note" id="admin-note" role="status" aria-live="polite"></p>
           </div>
+
+          <div class="admin-box">
+            <h4>Detailed Lessons</h4>
+            <p>Open a lesson in a generated reading tab or download only that lesson's CSV.</p>
+            <div class="lesson-admin-list" id="lesson-admin-list"></div>
+          </div>
         </div>
       </div>
 
       <div class="days" id="private-plan-days">
         <article class="day">
-          <h3>Lesson 1: Meet the Pieces</h3>
-          <p>Students will learn the goal of chess, the chessboard layout, how every piece moves, and basic vocabulary.</p>
-
-          <div class="lesson-block">
-            <span class="lesson-time">0:00-0:05</span>
-            <h4>Welcome</h4>
-            <ul>
-              <li>Introduce AK64 Chess Hub.</li>
-              <li>Ask who has seen chess before and who knows any piece names.</li>
-              <li>Explain that chess is a strategy game and the goal is checkmate.</li>
-            </ul>
-          </div>
-
-          <div class="lesson-block">
-            <span class="lesson-time">0:05-0:15</span>
-            <h4>Understanding the Board</h4>
-            <ul>
-              <li>Teach 8 rows, 8 columns, light square on the right, files, ranks, and diagonals.</li>
-              <li>Ask students to identify corners, center squares, and diagonals on the wall board.</li>
-            </ul>
-          </div>
-
-          <div class="lesson-block">
-            <span class="lesson-time">0:15-0:35</span>
-            <h4>Learning the Pieces</h4>
-            <ul>
-              <li>Pawn: moves forward and captures diagonally.</li>
-              <li>Rook: moves horizontally and vertically.</li>
-              <li>Bishop: moves diagonally.</li>
-              <li>Knight: moves in an L shape and can jump.</li>
-              <li>Queen: combines rook and bishop movement.</li>
-              <li>King: moves one square.</li>
-              <li>After each piece, students demonstrate legal moves on the wall board.</li>
-            </ul>
-          </div>
-
-          <div class="lesson-block">
-            <span class="lesson-time">0:35-0:50</span>
-            <h4>Piece Challenges</h4>
-            <ul>
-              <li>Ask how many squares a rook can move to.</li>
-              <li>Ask where a knight can move.</li>
-              <li>Ask whether a bishop can reach a target square.</li>
-            </ul>
-          </div>
-
-          <div class="lesson-block">
-            <span class="lesson-time">0:50-1:00</span>
-            <h4>Review</h4>
-            <ul>
-              <li>Review piece names, movement, and the goal of chess.</li>
-              <li>Quiz: Which piece jumps? Which piece is worth the most? Which piece must never be lost?</li>
-            </ul>
-          </div>
-        </article>
-
-        <article class="day">
-          <h3>Lesson 2: Rules and Chess Principles</h3>
+          <h3>Rules and Chess Principles</h3>
           <p>Students will learn check, checkmate, stalemate, special rules, and AK64's basic chess principles.</p>
 
           <div class="lesson-block">
@@ -1046,7 +1030,7 @@
         </article>
 
         <article class="day">
-          <h3>Lesson 3: Beginner Tactics and Chess Thinking</h3>
+          <h3>Beginner Tactics and Chess Thinking</h3>
           <p>Students will learn how to spot opportunities, avoid mistakes, and recognize basic tactical patterns.</p>
 
           <div class="lesson-block">
@@ -1124,7 +1108,7 @@
     const STATUS_KEY = "ak64ClassStatuses";
     const CLASS_KEY = "ak64ClassRows";
     const PLAN_KEY = "ak64PrivatePlanRows";
-    const REMOTE_SCHEDULE_API = "https://script.google.com/macros/s/AKfycbznxpyqTaypU2FRvkHkNGYL_vhwCeYKLzjjVR9mRw65doBKIP_ANbKEBh3Rt6scAg4c/exec";
+    const REMOTE_SCHEDULE_API = "https://script.google.com/macros/s/AKfycbx91hbSc5V2Hgq3LMN3gEDyooISlg1XI807R_4TC5LRUD3qSHjSlenwpvvQ0zLiISjG/exec";
     const BASE_CLASS_TITLES = [
       "Meet the Pieces",
       "Rules and Chess Principles",
@@ -1290,7 +1274,7 @@
       return Array.from(document.querySelectorAll("#private-plan-days .day")).flatMap((dayNode, index) => {
         const heading = dayNode.querySelector("h3")?.textContent || "";
         const day = String(index + 1);
-        const dayTitle = heading.includes(":") ? heading.split(":").slice(1).join(":").trim() : heading.trim();
+        const dayTitle = heading.replace(/^Lesson\s+\d+\s*:\s*/i, "").trim();
         const objective = dayNode.querySelector(":scope > p")?.textContent || "";
 
         return Array.from(dayNode.querySelectorAll(".lesson-block")).map((block) => ({
@@ -1304,9 +1288,37 @@
       });
     }
 
+    function normalizeLessonRows(rows) {
+      const groups = [];
+      const groupMap = new Map();
+
+      rows.forEach((row, index) => {
+        const key = row.day || `lesson-${index}`;
+        if (!groupMap.has(key)) {
+          const group = {
+            key,
+            sortValue: Number.isFinite(Number(key)) ? Number(key) : index + 1,
+            rows: []
+          };
+          groupMap.set(key, group);
+          groups.push(group);
+        }
+
+        groupMap.get(key).rows.push(row);
+      });
+
+      return groups
+        .sort((first, second) => first.sortValue - second.sortValue)
+        .flatMap((group, index) => group.rows.map((row) => ({
+          ...row,
+          day: String(index + 1)
+        })));
+    }
+
     function renderPrivatePlan(rows) {
       const container = document.getElementById("private-plan-days");
-      const grouped = rows.reduce((groups, row) => {
+      const normalizedRows = normalizeLessonRows(rows);
+      const grouped = normalizedRows.reduce((groups, row) => {
         const key = row.day || "1";
         groups[key] = groups[key] || [];
         groups[key].push(row);
@@ -1335,12 +1347,14 @@
 
         return `
           <article class="day">
-            <h3>Lesson ${escapeHTML(day)}: ${escapeHTML(first.day_title || "")}</h3>
+            <h3>${escapeHTML(first.day_title || `Lesson ${day}`)}</h3>
             <p>${escapeHTML(first.objective || "")}</p>
             ${blocks}
           </article>
         `;
       }).join("");
+      renderLessonCSVButtons();
+      renderLessonAdminList();
     }
 
     function escapeHTML(value) {
@@ -1458,10 +1472,200 @@
       setAdminNote("Downloaded one CSV with class cards and the private lesson plan.");
     }
 
+    function getExistingLessonDays() {
+      return [...new Set(getPlanRowsFromDOM().map((row) => row.day).filter(Boolean))]
+        .sort((first, second) => Number(first) - Number(second));
+    }
+
+    function getLessonSummaries() {
+      const rows = getPlanRowsFromDOM();
+      return getExistingLessonDays().map((day) => {
+        const firstRow = rows.find((row) => row.day === day) || {};
+        return {
+          day,
+          title: firstRow.day_title || `Lesson ${day}`
+        };
+      });
+    }
+
+    function renderLessonCSVButtons() {
+      const wrapper = document.getElementById("lesson-csv-buttons");
+      if (!wrapper) {
+        return;
+      }
+
+      wrapper.innerHTML = "";
+      getExistingLessonDays().forEach((day) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = `Lesson ${day} CSV`;
+        button.addEventListener("click", () => downloadLessonDayCSV(day));
+        wrapper.appendChild(button);
+      });
+    }
+
+    function renderLessonAdminList() {
+      const wrapper = document.getElementById("lesson-admin-list");
+      if (!wrapper) {
+        return;
+      }
+
+      wrapper.innerHTML = "";
+      getLessonSummaries().forEach((lesson) => {
+        const item = document.createElement("div");
+        item.className = "lesson-admin-item";
+
+        const title = document.createElement("span");
+        title.className = "lesson-admin-title";
+        title.textContent = lesson.title;
+
+        const openButton = document.createElement("button");
+        openButton.type = "button";
+        openButton.textContent = "Open Lesson";
+        openButton.addEventListener("click", () => openLessonPlan(lesson.day));
+
+        const csvButton = document.createElement("button");
+        csvButton.type = "button";
+        csvButton.textContent = "CSV";
+        csvButton.addEventListener("click", () => downloadLessonDayCSV(lesson.day));
+
+        item.append(title, openButton, csvButton);
+        wrapper.appendChild(item);
+      });
+    }
+
     function downloadLessonDayCSV(day) {
       const rows = getLessonRowsForCSV().filter((row) => row.day === day);
       downloadCSV(`ak64-day-${day}-lesson.csv`, rows, getCombinedCSVHeaders());
       setAdminNote(`Downloaded Lesson ${day} CSV.`);
+    }
+
+    function openLessonPlan(day) {
+      const rows = getPlanRowsFromDOM().filter((row) => row.day === day);
+      if (!rows.length) {
+        setAdminNote(`Lesson ${day} could not be opened because it has no plan rows.`);
+        return;
+      }
+
+      const first = rows[0];
+      const blocks = rows.map((row) => {
+        const bullets = String(row.bullets || "")
+          .split(";")
+          .map((bullet) => bullet.trim())
+          .filter(Boolean)
+          .map((bullet) => `<li>${escapeHTML(bullet)}</li>`)
+          .join("");
+
+        return `
+          <section class="lesson-block">
+            <span>${escapeHTML(row.time || "")}</span>
+            <h2>${escapeHTML(row.section || "")}</h2>
+            <ul>${bullets}</ul>
+          </section>
+        `;
+      }).join("");
+      const lessonWindow = window.open("", "_blank");
+
+      if (!lessonWindow) {
+        setAdminNote("The lesson tab was blocked by the browser. Allow pop-ups for this site and try again.");
+        return;
+      }
+
+      lessonWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${escapeHTML(first.day_title || `Lesson ${day}`)} | AK64 Chess Hub</title>
+          <style>
+            :root {
+              color-scheme: light;
+              --ink: #081426;
+              --muted: #52657e;
+              --paper: #edf5ff;
+              --line: rgba(8, 20, 38, 0.14);
+              --blue: #0b69b7;
+            }
+
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              font-family: Inter, Arial, sans-serif;
+              color: var(--ink);
+              background: linear-gradient(180deg, #f7fbff 0%, var(--paper) 100%);
+              line-height: 1.6;
+            }
+
+            main {
+              width: min(860px, calc(100% - 32px));
+              margin: 0 auto;
+              padding: 42px 0;
+            }
+
+            header {
+              padding-bottom: 22px;
+              border-bottom: 1px solid var(--line);
+            }
+
+            p {
+              color: var(--muted);
+            }
+
+            h1,
+            h2 {
+              margin: 0;
+              line-height: 1.1;
+            }
+
+            h1 {
+              font-size: clamp(34px, 7vw, 56px);
+            }
+
+            .lesson-block {
+              padding: 22px 0;
+              border-bottom: 1px solid var(--line);
+            }
+
+            .lesson-block span {
+              display: inline-flex;
+              min-height: 30px;
+              align-items: center;
+              padding: 0 10px;
+              border-radius: 999px;
+              background: rgba(96, 165, 250, 0.16);
+              color: #0b2f62;
+              font-size: 13px;
+              font-weight: 800;
+            }
+
+            .lesson-block h2 {
+              margin-top: 12px;
+              font-size: 24px;
+            }
+
+            li {
+              margin: 8px 0;
+              color: var(--muted);
+            }
+          </style>
+        </head>
+        <body>
+          <main>
+            <header>
+              <h1>${escapeHTML(first.day_title || `Lesson ${day}`)}</h1>
+              <p>${escapeHTML(first.objective || "")}</p>
+            </header>
+            ${blocks}
+          </main>
+        </body>
+        </html>
+      `);
+      lessonWindow.document.close();
+      setAdminNote(`Opened ${first.day_title || `Lesson ${day}`} in a new tab.`);
     }
 
     function resetPrivatePlan() {
@@ -1573,6 +1777,7 @@
       }
 
       renderStatusControls();
+      renderLessonCSVButtons();
       updateScheduleStatus();
       return `Uploaded and applied ${changed.join(" and ")}.`;
     }
@@ -1868,6 +2073,7 @@
         document.getElementById("admin-panel").style.display = "block";
         document.body.classList.add("admin-unlocked");
         renderStatusControls();
+        renderLessonCSVButtons();
         msg.textContent = "Access granted. Welcome to AK64 Chess Hub.";
         msg.classList.add("success");
         box.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1890,6 +2096,7 @@
       const loadedRemote = await loadRemoteScheduleData(false);
 
       renderStatusControls();
+      renderLessonCSVButtons();
       setupCSVUpload();
       scheduleInitialized = true;
       updateScheduleStatus();
