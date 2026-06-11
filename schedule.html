@@ -1564,107 +1564,49 @@
           </section>
         `;
       }).join("");
-      const lessonWindow = window.open("", "_blank");
+      const lessonHTML = [
+        "<!DOCTYPE html>",
+        "<html lang=\"en\">",
+        "<head>",
+        "<meta charset=\"UTF-8\">",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">",
+        `<title>${escapeHTML(first.day_title || `Lesson ${day}`)} | AK64 Chess Hub</title>`,
+        "<style>",
+        ":root{color-scheme:light;--ink:#081426;--muted:#52657e;--paper:#edf5ff;--line:rgba(8,20,38,.14)}",
+        "*{box-sizing:border-box}",
+        "body{margin:0;font-family:Inter,Arial,sans-serif;color:var(--ink);background:linear-gradient(180deg,#f7fbff 0%,var(--paper) 100%);line-height:1.6}",
+        "main{width:min(860px,calc(100% - 32px));margin:0 auto;padding:42px 0}",
+        "header{padding-bottom:22px;border-bottom:1px solid var(--line)}",
+        "p,li{color:var(--muted)}",
+        "h1,h2{margin:0;line-height:1.1}",
+        "h1{font-size:clamp(34px,7vw,56px)}",
+        ".lesson-block{padding:22px 0;border-bottom:1px solid var(--line)}",
+        ".lesson-block span{display:inline-flex;min-height:30px;align-items:center;padding:0 10px;border-radius:999px;background:rgba(96,165,250,.16);color:#0b2f62;font-size:13px;font-weight:800}",
+        ".lesson-block h2{margin-top:12px;font-size:24px}",
+        "li{margin:8px 0}",
+        "</style>",
+        "</head>",
+        "<body>",
+        "<main>",
+        "<header>",
+        `<h1>${escapeHTML(first.day_title || `Lesson ${day}`)}</h1>`,
+        `<p>${escapeHTML(first.objective || "")}</p>`,
+        "</header>",
+        blocks,
+        "</main>",
+        "</body>",
+        "</html>"
+      ].join("");
+      const lessonURL = URL.createObjectURL(new Blob([lessonHTML], { type: "text/html" }));
+      const lessonWindow = window.open(lessonURL, "_blank");
 
       if (!lessonWindow) {
+        URL.revokeObjectURL(lessonURL);
         setAdminNote("The lesson tab was blocked by the browser. Allow pop-ups for this site and try again.");
         return;
       }
 
-      lessonWindow.document.write(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${escapeHTML(first.day_title || `Lesson ${day}`)} | AK64 Chess Hub</title>
-          <style>
-            :root {
-              color-scheme: light;
-              --ink: #081426;
-              --muted: #52657e;
-              --paper: #edf5ff;
-              --line: rgba(8, 20, 38, 0.14);
-              --blue: #0b69b7;
-            }
-
-            * {
-              box-sizing: border-box;
-            }
-
-            body {
-              margin: 0;
-              font-family: Inter, Arial, sans-serif;
-              color: var(--ink);
-              background: linear-gradient(180deg, #f7fbff 0%, var(--paper) 100%);
-              line-height: 1.6;
-            }
-
-            main {
-              width: min(860px, calc(100% - 32px));
-              margin: 0 auto;
-              padding: 42px 0;
-            }
-
-            header {
-              padding-bottom: 22px;
-              border-bottom: 1px solid var(--line);
-            }
-
-            p {
-              color: var(--muted);
-            }
-
-            h1,
-            h2 {
-              margin: 0;
-              line-height: 1.1;
-            }
-
-            h1 {
-              font-size: clamp(34px, 7vw, 56px);
-            }
-
-            .lesson-block {
-              padding: 22px 0;
-              border-bottom: 1px solid var(--line);
-            }
-
-            .lesson-block span {
-              display: inline-flex;
-              min-height: 30px;
-              align-items: center;
-              padding: 0 10px;
-              border-radius: 999px;
-              background: rgba(96, 165, 250, 0.16);
-              color: #0b2f62;
-              font-size: 13px;
-              font-weight: 800;
-            }
-
-            .lesson-block h2 {
-              margin-top: 12px;
-              font-size: 24px;
-            }
-
-            li {
-              margin: 8px 0;
-              color: var(--muted);
-            }
-          </style>
-        </head>
-        <body>
-          <main>
-            <header>
-              <h1>${escapeHTML(first.day_title || `Lesson ${day}`)}</h1>
-              <p>${escapeHTML(first.objective || "")}</p>
-            </header>
-            ${blocks}
-          </main>
-        </body>
-        </html>
-      `);
-      lessonWindow.document.close();
+      window.setTimeout(() => URL.revokeObjectURL(lessonURL), 60000);
       setAdminNote(`Opened ${first.day_title || `Lesson ${day}`} in a new tab.`);
     }
 
