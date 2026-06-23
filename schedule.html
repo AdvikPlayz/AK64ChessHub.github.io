@@ -996,15 +996,11 @@
     const LEGACY_CLASS_KEY = "ak64ClassRows";
     const LEGACY_PLAN_KEY = "ak64PrivatePlanRows";
     const REMOTE_SCHEDULE_API = "https://script.google.com/macros/s/AKfycbyzT8GPeA_hpzTs8ptcXuT2ck_32FTW2arfRZGTPsfj01oafvt3le0Kc6PywKRizt6F/exec";
-    const BASE_CLASS_TITLES = [
-      "Rules and Chess Principles",
-      "Beginner Tactics and Chess Thinking"
-    ];
     let scheduleInitialized = false;
     let lastLoadedRemoteState = null;
 
     function parseScheduleDate(dateText, timeText) {
-      const dateMatch = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dateText || "");
+      const dateMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(dateText || "");
 
       if (!dateMatch) {
         return null;
@@ -1032,6 +1028,28 @@
       }
 
       return new Date(year, month, day, hour, minute);
+    }
+
+    function normalizeScheduleDate(value) {
+      const dateMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(value || "").trim());
+
+      if (!dateMatch) {
+        return cleanPlaceholder(value, EMPTY_DATE);
+      }
+
+      const month = dateMatch[1].padStart(2, "0");
+      const day = dateMatch[2].padStart(2, "0");
+      return `${month}/${day}/${dateMatch[3]}`;
+    }
+
+    function normalizeScheduleTime(value) {
+      const timeMatch = /^(\d{1,2}):(\d{2})\s?(AM|PM)$/i.exec(String(value || "").trim());
+
+      if (!timeMatch) {
+        return cleanPlaceholder(value, EMPTY_TIME);
+      }
+
+      return `${timeMatch[1].padStart(2, "0")}:${timeMatch[2]} ${timeMatch[3].toUpperCase()}`;
     }
 
     function isSameDay(firstDate, secondDate) {
@@ -1087,7 +1105,7 @@
 
         if (!dateTime) {
           card.classList.add("is-date-pending");
-          statusNode.textContent = manualStatus === "scheduled" ? "Scheduled" : "Date pending";
+          statusNode.textContent = "Date pending";
           return;
         }
 
@@ -1306,10 +1324,45 @@
         rows.push(row);
       }
 
-      const headers = rows.shift()?.map((header) => header.trim()) || [];
+      const headers = rows.shift()?.map((header) => normalizeCSVHeader(header)) || [];
       return rows
         .filter((csvRow) => csvRow.some((value) => value.trim()))
-        .map((csvRow) => Object.fromEntries(headers.map((header, index) => [header, csvRow[index] || ""])));
+        .map((csvRow) => normalizeCSVRow(Object.fromEntries(headers.map((header, index) => [header, csvRow[index] || ""]))));
+    }
+
+    function normalizeCSVHeader(header) {
+      return String(header || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    }
+
+    function normalizeCSVRow(row) {
+      const aliases = {
+        class_title: "title",
+        lesson_title: "day_title",
+        class_date: "date",
+        lesson_date: "date",
+        class_time: "time",
+        lesson_time: "time",
+        class_status: "status",
+        lesson_status: "status",
+        overview: "description",
+        details: "description"
+      };
+
+      Object.entries(aliases).forEach(([source, target]) => {
+        if (!row[target] && row[source]) {
+          row[target] = row[source];
+        }
+      });
+
+      if (row.type) {
+        row.type = row.type.trim().toLowerCase();
+      }
+
+      return row;
     }
 
     function downloadCSV(filename, rows, headers) {
@@ -1622,32 +1675,85 @@
 
     function applyImportedRows(rows) {
       const hasType = Object.prototype.hasOwnProperty.call(rows[0], "type");
-      const classRows = rows.filter((row) => (hasType ? row.type === "class" : Object.prototype.hasOwnProperty.call(row, "title") && Object.prototype.hasOwnProperty.call(row, "description")));
-      const lessonRows = rows.filter((row) => (hasType ? row.type === "lesson" : Object.prototype.hasOwnProperty.call(row, "day_title") && Object.prototype.hasOwnProperty.call(row, "section")));
+      const classRows = rows.filter((row) => (
+        hasType
+          ? row.type === "class" || (!row.type && row.title && (row.date || row.time || row.description))
+          : Object.prototype.hasOwnProperty.call(row, "title") && Object.prototype.hasOwnProperty.call(row, "description")
+      ));
+      const lessonRows = rows.filter((row) => (
+        hasType
+          ? row.type === "lesson" || (!row.type && row.day_title && row.section)
+          : Object.prototype.hasOwnProperty.call(row, "day_title") && Object.prototype.hasOwnProperty.call(row, "section")
+      ));
+      const scheduleRowsFromLessons = getScheduleRowsFromLessonRows(lessonRows);
+      const replacementClassRows = mergeClassRows([...classRows, ...scheduleRowsFromLessons]);
       let changed = [];
 
-      if (classRows.length) {
-        applyClassRows(classRows);
+      if (!classRows.length && !lessonRows.length) {
+        return "Upload failed. CSV must include class columns or lesson columns.";
+      }
+
+      if (replacementClassRows.length) {
+        applyClassRows(replacementClassRows, { replace: true });
         changed.push("class cards");
+      } else {
+        applyClassRows([], { replace: true });
       }
 
       if (lessonRows.length) {
-        const currentRows = getPlanRowsFromDOM();
-        const importedDays = new Set(lessonRows.map((row) => row.day).filter(Boolean));
-        const keptRows = currentRows.filter((row) => !importedDays.has(row.day));
-        const nextRows = [...keptRows, ...lessonRows].sort((a, b) => Number(a.day) - Number(b.day));
-        renderPrivatePlan(nextRows);
-        changed.push(importedDays.size === 1 ? `Lesson ${Array.from(importedDays)[0]}` : "lesson plan");
-      }
-
-      if (!changed.length) {
-        return "Upload failed. CSV must include class columns or lesson columns.";
+        renderPrivatePlan(lessonRows);
+        changed.push("lesson plan");
+      } else {
+        renderPrivatePlan([]);
       }
 
       renderStatusControls();
       renderLessonCSVButtons();
       updateScheduleStatus();
-      return `Uploaded and applied ${changed.join(" and ")}.`;
+      return `Uploaded and replaced ${changed.join(" and ")}. Use Publish to All Devices to update the website.`;
+    }
+
+    function mergeClassRows(rows) {
+      const byTitle = new Map();
+
+      rows.forEach((row) => {
+        const title = row.title || row.day_title || "";
+        if (!title) {
+          return;
+        }
+
+        byTitle.set(title, {
+          ...byTitle.get(title),
+          ...row,
+          title
+        });
+      });
+
+      return Array.from(byTitle.values());
+    }
+
+    function getScheduleRowsFromLessonRows(rows) {
+      const lessonGroups = new Map();
+
+      rows.forEach((row, index) => {
+        const key = row.day || row.day_title || `lesson-${index}`;
+        const existing = lessonGroups.get(key);
+
+        if (!existing || row.date || row.time || row.status) {
+          lessonGroups.set(key, row);
+        }
+      });
+
+      return Array.from(lessonGroups.values())
+        .filter((row) => row.date || row.time || row.status)
+        .map((row) => ({
+          type: "class",
+          title: row.title || row.day_title || "Untitled Class",
+          date: row.date || "",
+          time: row.time || "",
+          status: row.status || "",
+          description: row.description || row.objective || "Lesson details will be added once they are confirmed."
+        }));
     }
 
     function applyClassRows(rows, options = {}) {
@@ -1656,11 +1762,7 @@
       if (options.replace) {
         document.querySelectorAll(".time-card").forEach((card) => {
           if (!incomingTitles.has(card.dataset.title)) {
-            if (BASE_CLASS_TITLES.includes(card.dataset.title)) {
-              resetClassCard(card);
-            } else {
-              card.remove();
-            }
+            card.remove();
           }
         });
       }
@@ -1670,21 +1772,12 @@
         const card = Array.from(document.querySelectorAll(".time-card")).find((item) => item.dataset.title === title)
           || createClassCard(title);
 
-        card.dataset.date = row.date && row.date !== EMPTY_DATE ? row.date : "";
-        card.dataset.time = row.time && row.time !== EMPTY_TIME ? row.time : "";
+        card.dataset.date = normalizeScheduleDate(row.date);
+        card.dataset.time = normalizeScheduleTime(row.time);
         card.dataset.status = row.status || "";
         card.querySelector(".time-body p").textContent = row.description || card.querySelector(".time-body p").textContent;
       });
       updateScheduleStatus();
-    }
-
-    function resetClassCard(card) {
-      card.dataset.date = "";
-      card.dataset.time = "";
-      card.dataset.status = "";
-      card.querySelector(".class-date").textContent = EMPTY_DATE;
-      card.querySelector(".date-time").textContent = EMPTY_TIME;
-      card.querySelector(".status-tag").textContent = "Pending";
     }
 
     function createClassCard(title) {
