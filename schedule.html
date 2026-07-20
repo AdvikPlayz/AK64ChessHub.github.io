@@ -987,6 +987,9 @@
     AK64 Chess Hub schedule page. Password-protected class outline for beginner chess training.
   </footer>
 
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
   <script>
     const PASSWORD = "AdviksChessClass";
     const EMPTY_DATE = "__/__/____";
@@ -995,9 +998,18 @@
     const LEGACY_STATUS_KEY = "ak64ClassStatuses";
     const LEGACY_CLASS_KEY = "ak64ClassRows";
     const LEGACY_PLAN_KEY = "ak64PrivatePlanRows";
-    const REMOTE_SCHEDULE_API = "https://script.google.com/macros/s/AKfycbyzT8GPeA_hpzTs8ptcXuT2ck_32FTW2arfRZGTPsfj01oafvt3le0Kc6PywKRizt6F/exec";
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCv9Txa7nrJJEc9h1Y_kCRWsfz0Yyh-u2o",
+      authDomain: "ak64-chess-hub.firebaseapp.com",
+      databaseURL: "https://ak64-chess-hub-default-rtdb.firebaseio.com",
+      projectId: "ak64-chess-hub",
+      appId: "1:262081623743:web:94ed15cd310ecdaa9bb80a"
+    };
+    const FIREBASE_SCHEDULE_PATH = "ak64Schedule/state";
+    const FIREBASE_ADMIN_EMAIL_KEY = "ak64FirebaseAdminEmail";
     let scheduleInitialized = false;
     let lastLoadedRemoteState = null;
+    let firebaseServices = null;
 
     function parseScheduleDate(dateText, timeText) {
       const dateMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(dateText || "");
@@ -1888,62 +1900,76 @@
       return true;
     }
 
-    function getRemoteURL() {
-      return REMOTE_SCHEDULE_API.trim();
+    function isFirebaseConfigured() {
+      return FIREBASE_CONFIG.apiKey
+        && !FIREBASE_CONFIG.apiKey.startsWith("PASTE_")
+        && FIREBASE_CONFIG.databaseURL
+        && !FIREBASE_CONFIG.databaseURL.includes("PASTE_PROJECT_ID");
     }
 
-    function getPublishKey() {
-      let publishKey = readStorage("session", "ak64PublishKey") || "";
-
-      if (!publishKey) {
-        publishKey = window.prompt("Enter your private publish key for the shared schedule:") || "";
+    function getFirebaseServices() {
+      if (!isFirebaseConfigured() || !window.firebase) {
+        return null;
       }
 
-      publishKey = publishKey.trim();
-
-      if (publishKey) {
-        writeStorage("session", "ak64PublishKey", publishKey);
+      if (!firebaseServices) {
+        const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+        firebaseServices = {
+          app,
+          auth: firebase.auth(),
+          database: firebase.database()
+        };
       }
 
-      return publishKey;
+      return firebaseServices;
     }
 
-    function loadJSONP(url) {
-      return new Promise((resolve, reject) => {
-        const callbackName = `ak64ScheduleCallback${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        const script = document.createElement("script");
-        const separator = url.includes("?") ? "&" : "?";
-        const timeout = window.setTimeout(() => {
-          cleanup();
-          reject(new Error("The shared schedule request timed out."));
-        }, 10000);
+    function getScheduleRef() {
+      const services = getFirebaseServices();
+      return services ? services.database.ref(FIREBASE_SCHEDULE_PATH) : null;
+    }
 
-        function cleanup() {
-          window.clearTimeout(timeout);
-          script.remove();
-          delete window[callbackName];
-        }
+    async function signInFirebaseAdmin() {
+      const services = getFirebaseServices();
+      if (!services) {
+        setAdminNote("Firebase sync is not configured yet. Add your Firebase web config in schedule.html.");
+        return false;
+      }
 
-        window[callbackName] = (data) => {
-          cleanup();
-          resolve(data);
-        };
+      if (services.auth.currentUser) {
+        return true;
+      }
 
-        script.onerror = () => {
-          cleanup();
-          reject(new Error("The shared schedule could not be reached."));
-        };
+      const savedEmail = readStorage("local", FIREBASE_ADMIN_EMAIL_KEY) || "";
+      const email = (window.prompt("Enter your Firebase admin email:", savedEmail) || "").trim();
 
-        script.src = `${url}${separator}callback=${encodeURIComponent(callbackName)}&cache=${Date.now()}`;
-        document.body.appendChild(script);
-      });
+      if (!email) {
+        setAdminNote("Publish canceled. Firebase admin email is required.");
+        return false;
+      }
+
+      const password = window.prompt("Enter your Firebase admin password:") || "";
+
+      if (!password) {
+        setAdminNote("Publish canceled. Firebase admin password is required.");
+        return false;
+      }
+
+      try {
+        await services.auth.signInWithEmailAndPassword(email, password);
+        writeStorage("local", FIREBASE_ADMIN_EMAIL_KEY, email);
+        return true;
+      } catch (error) {
+        setAdminNote(`Firebase sign-in failed: ${error.message}`);
+        return false;
+      }
     }
 
     async function loadRemoteScheduleData(showNote = false) {
-      const remoteURL = getRemoteURL();
-      if (!remoteURL) {
+      const scheduleRef = getScheduleRef();
+      if (!scheduleRef) {
         if (showNote) {
-          setAdminNote("Shared sync is not configured yet. Add the Google Apps Script web app URL to REMOTE_SCHEDULE_API.");
+          setAdminNote("Firebase sync is not configured yet. Add your Firebase web config in schedule.html.");
         }
         clearPublicClassCards();
         document.body.classList.add("schedule-error");
@@ -1951,21 +1977,28 @@
       }
 
       try {
-        const result = await loadJSONP(remoteURL);
-        if (!result || result.ok === false) {
-          throw new Error(result?.error || "No shared schedule data was returned.");
+        const snapshot = await scheduleRef.once("value");
+        const state = snapshot.val();
+
+        if (!state) {
+          clearPublicClassCards();
+          if (showNote) {
+            setAdminNote("No shared schedule has been published yet.");
+          }
+          document.body.classList.remove("schedule-error");
+          return false;
         }
 
-        lastLoadedRemoteState = result.state || result;
+        lastLoadedRemoteState = state;
         const applied = applyScheduleState(lastLoadedRemoteState);
         if (showNote) {
-          setAdminNote(applied ? "Loaded the shared schedule from the website data." : "No shared schedule has been published yet.");
+          setAdminNote(applied ? "Loaded the shared schedule from Firebase." : "Firebase data was found, but it is not in the expected schedule format.");
         }
         document.body.classList.toggle("schedule-error", !applied);
         return applied;
       } catch (error) {
         if (showNote) {
-          setAdminNote(`Could not load shared schedule data: ${error.message}`);
+          setAdminNote(`Could not load Firebase schedule data: ${error.message}`);
         }
         clearPublicClassCards();
         document.body.classList.add("schedule-error");
@@ -1974,15 +2007,14 @@
     }
 
     async function publishWebsiteData() {
-      const remoteURL = getRemoteURL();
-      if (!remoteURL) {
-        setAdminNote("Shared sync is not configured yet. Add the Google Apps Script web app URL to REMOTE_SCHEDULE_API.");
+      const scheduleRef = getScheduleRef();
+      if (!scheduleRef) {
+        setAdminNote("Firebase sync is not configured yet. Add your Firebase web config in schedule.html.");
         return;
       }
 
-      const publishKey = getPublishKey();
-      if (!publishKey) {
-        setAdminNote("Publish canceled. A private publish key is required to update the shared schedule.");
+      const signedIn = await signInFirebaseAdmin();
+      if (!signedIn) {
         return;
       }
 
@@ -1990,31 +2022,13 @@
       const state = getScheduleState();
       state.clientPublishId = publishId;
 
-      const payload = {
-        publishKey,
-        password: PASSWORD,
-        state
-      };
-
       try {
-        await fetch(remoteURL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: {
-            "Content-Type": "text/plain;charset=utf-8"
-          },
-          body: JSON.stringify(payload)
-        });
-        setAdminNote("Publish sent. Verifying shared website data...");
-        window.setTimeout(async () => {
-          const verified = await loadRemoteScheduleData(false);
-          const exactPublishVerified = verified && lastLoadedRemoteState?.clientPublishId === publishId;
-          setAdminNote(exactPublishVerified
-            ? "Published and verified. Phones and other devices will see this shared schedule after refresh."
-            : "Publish was sent, but this exact update could not be verified. Check the Google Apps Script deployment, access setting, and publish key.");
-        }, 1200);
+        await scheduleRef.set(state);
+        lastLoadedRemoteState = state;
+        applyScheduleState(state);
+        setAdminNote("Published and saved in Firebase. Phones and other devices will see this shared schedule after refresh.");
       } catch (error) {
-        setAdminNote(`Publish failed: ${error.message}`);
+        setAdminNote(`Firebase publish failed: ${error.message}`);
       }
     }
 
